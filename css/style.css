@@ -360,3 +360,28 @@ select:focus, .form input:focus, .num:focus { border-color: var(--ink); }
   .card-price b { font-size: 16px; }
   .card-price { flex-wrap: wrap; gap: 4px 8px; }
 }
+
+/* ---------- фото товаров из панели ---------- */
+.art.photo { object-fit: contain; border-radius: 8px; }
+.card-art:has(.photo), .pdp-art:has(.photo) { padding: 4%; }
+.pic { position: relative; cursor: pointer; flex: none; }
+.pic .mini { width: 52px; height: 52px; transition: box-shadow .2s; }
+.pic em { position: absolute; inset: auto 0 0 0; font: 600 9px/1 var(--f); font-style: normal; text-align: center; color: #fff; background: rgba(16,17,20,.75); padding: 3px 0; border-radius: 0 0 10px 10px; opacity: 0; transition: opacity .2s; }
+.pic:hover em, .pic:focus-within em { opacity: 1; }
+.pic:hover .mini { box-shadow: 0 0 0 2px var(--acc); }
+.link { border: 0; background: none; padding: 0; color: var(--acc); font-size: 12px; text-decoration: underline; }
+.prods .tr { grid-template-columns: 2.2fr 130px 100px 70px 90px; }
+
+/* ---------- подсказки поиска ---------- */
+.search { position: relative; }
+.suggest { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 50px -20px rgba(16,17,20,.35); padding: 6px; z-index: 30; animation: pop .18s cubic-bezier(.2,.8,.2,1); }
+.suggest a { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 7px 10px; border-radius: 12px; }
+.suggest a:hover, .suggest a.on { background: var(--bg); }
+.suggest .mini { width: 44px; height: 44px; }
+.suggest b { display: block; font-size: 14px; font-weight: 600; }
+.suggest small { color: var(--mute); font-size: 12px; }
+.suggest em { font: 700 14px/1 var(--fd); font-style: normal; white-space: nowrap; }
+.suggest-all { display: block; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--line); background: none; padding: 11px 12px 7px; margin-top: 4px; font-size: 13px; color: var(--ink2); }
+.suggest-all:hover { color: var(--acc); }
+.suggest-none { padding: 14px; color: var(--mute); font-size: 14px; }
+@media (max-width: 860px) { .prods .tr { grid-template-columns: 1fr 96px 70px; } }

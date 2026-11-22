@@ -6,7 +6,8 @@
   const subs = new Set();
 
   const read = () => { try { const s = JSON.parse(localStorage.getItem(KEY)); return s && s.v === 1 ? s : null; } catch { return null; } };
-  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(B.db)); } catch { /* приватный режим — живём в памяти */ } };
+  // false — браузер не принял запись (переполнен или приватный режим): данные живут только в памяти вкладки
+  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(B.db)); return true; } catch { return false; } };
 
   B.db = read() || B.seed();
   write();
@@ -30,8 +31,9 @@
     const p = B.product(id);
     if (!p) return;
     Object.assign(p, patch);
-    write();
+    const ok = write();
     emit('product', p);
+    return ok;
   };
 
   B.addOrder = ({ name, phone, items, pay = 'cash', months = 0, src = 'site' }) => {

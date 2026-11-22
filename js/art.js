@@ -59,5 +59,5 @@
       <linearGradient id="${g}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5bdb"/><stop offset=".5" stop-color="#7c3aed"/><stop offset="1" stop-color="#f97316"/></linearGradient>
     </defs>${(draw[type] || draw.phone)(color, g)}</svg>`;
   };
-  B.artOf = (p, ci = 0) => B.art((B.CATS.find((c) => c.id === p.cat) || {}).art, p.colors[ci] || p.colors[0]);
+  B.artOf = (p, ci = 0) => p.img ? `<img class="art photo" src="${p.img}" alt="${p.name}" loading="lazy">` : B.art((B.CATS.find((c) => c.id === p.cat) || {}).art, p.colors[ci] || p.colors[0]);
 })();

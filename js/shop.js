@@ -137,7 +137,7 @@
   };
   B.views.s = (q) => {
     const s = decodeURIComponent(q || '').toLowerCase().trim();
-    const list = B.db.products.filter((p) => (p.brand + ' ' + p.name + ' ' + p.alias.join(' ')).toLowerCase().includes(s));
+    const list = B.findProducts(s);
     return listing(`${t('results')}: «${B.esc(s)}»`, list, [...new Set(list.map((p) => p.brand))]);
   };
   const listAfter = () => {
@@ -324,9 +324,60 @@
     const l = e.target.closest('[data-lang]');
     if (l) { B.setLang(l.dataset.lang); B.render(); B.bot && B.bot.relang(); }
   });
-  $('#search').addEventListener('submit', (e) => {
+  // ---------- поиск с подсказками: «iph» уже показывает айфоны ----------
+  const sq = (s) => s.toLowerCase().replace(/[\s\-_.]+/g, '');
+  // как люди пишут названия по-русски и по-азербайджански
+  const SYN = [['iphone', 'айфон|ayfon|aifon'], ['apple', 'эпл|эппл'], ['samsung', 'самсунг|samsunq'], ['galaxy', 'галакси'],
+    ['xiaomi', 'сяоми|ксиаоми|ksiaomi'], ['macbook', 'макбук|makbuk'], ['ipad', 'айпад|aypad'], ['airpods', 'эйрподс|аирподс|qulaqciq|наушники'],
+    ['watch', 'часы|saat'], ['dyson', 'дайсон|dayson'], ['buds', 'наушники|qulaqciq']];
+  B.findProducts = (q) => {
+    const words = q.toLowerCase().split(/\s+/).map(sq).filter(Boolean);
+    if (!words.length) return [];
+    return B.db.products
+      .map((p) => {
+        const name = sq(p.brand + p.name);
+        const hay = name + '|' + p.alias.map(sq).join('|') + '|' + sq(t('cat_' + p.cat)) + '|' + SYN.filter(([k]) => name.includes(k)).map(([, v]) => v).join('|');
+        if (!words.every((w) => hay.includes(w))) return null;
+        const score = (sq(p.name).startsWith(words[0]) ? 0 : name.includes(words[0]) ? 1 : 2) + (p.stock > 0 ? 0 : 0.5) - (p.hit ? 0.2 : 0);
+        return { p, score };
+      })
+      .filter(Boolean).sort((a, b) => a.score - b.score).map((x) => x.p);
+  };
+  const form = $('#search'), sInput = $('#search input');
+  const drop = document.createElement('div');
+  drop.className = 'suggest'; drop.hidden = true; drop.setAttribute('role', 'listbox');
+  form.appendChild(drop);
+  let act = -1;
+  const showSuggest = () => {
+    const q = sInput.value.trim();
+    const list = q ? B.findProducts(q).slice(0, 6) : [];
+    act = -1;
+    if (!q) { drop.hidden = true; return; }
+    drop.innerHTML = list.length
+      ? list.map((p) => `<a href="#/p/${p.id}" role="option"><i class="mini">${B.artOf(p)}</i><span><b>${p.name}</b><small>${t('cat_' + p.cat)} · ${p.stock > 0 ? t('in_stock') : t('out_stock')}</small></span><em>${B.money(p.price)}</em></a>`).join('')
+        + `<button type="submit" class="suggest-all">${t('results')}: «${B.esc(q)}» →</button>`
+      : `<div class="suggest-none">${t('no_results')}</div>`;
+    drop.hidden = false;
+  };
+  const closeSuggest = () => { drop.hidden = true; act = -1; };
+  sInput.addEventListener('input', showSuggest);
+  sInput.addEventListener('focus', () => sInput.value.trim() && showSuggest());
+  sInput.addEventListener('keydown', (e) => {
+    const items = [...drop.querySelectorAll('a')];
+    if (e.key === 'Escape') return closeSuggest();
+    if (!items.length || drop.hidden || !/Arrow(Down|Up)/.test(e.key)) return;
     e.preventDefault();
-    const q = $('#search input').value.trim();
+    act = (act + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    items.forEach((a, i) => a.classList.toggle('on', i === act));
+  });
+  document.addEventListener('pointerdown', (e) => { if (!form.contains(e.target)) closeSuggest(); });
+  drop.addEventListener('click', (e) => { if (e.target.closest('a')) { closeSuggest(); sInput.value = ''; sInput.blur(); } });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const items = [...drop.querySelectorAll('a')];
+    if (act >= 0 && items[act]) { location.hash = items[act].getAttribute('href'); sInput.value = ''; closeSuggest(); return; }
+    const q = sInput.value.trim();
+    closeSuggest();
     if (q) location.hash = '#/s/' + encodeURIComponent(q);
   });
   B.on((what) => {

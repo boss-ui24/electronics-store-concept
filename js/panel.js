@@ -41,12 +41,18 @@
   };
 
   const products = () => `
-    <p class="hint top">${L('Qiyməti dəyişin və sayta keçin — yeni qiymət saytda və botun cavabında artıq var.', 'Измените цену и откройте сайт — новая цена уже на витрине и в ответах бота.')}</p>
+    <p class="hint top">${L('Qiyməti və ya şəkli dəyişin, sonra sayta keçin — dəyişiklik saytda və botun cavabında artıq var. Şəkli dəyişmək üçün kiçik şəklə klikləyin.', 'Измените цену или фото и откройте сайт — изменения уже на витрине и в ответах бота. Чтобы сменить фото, нажмите на миниатюру.')}</p>
     <div class="tbl prods">
       <div class="tr th"><span>${L('Məhsul', 'Товар')}</span><span>${L('Qiymət, ₼', 'Цена, ₼')}</span><span>${L('Stok', 'Наличие')}</span><span>${L('Hit', 'Хит')}</span><span></span></div>
       ${B.db.products.map((p) => `
       <div class="tr">
-        <span class="pcell"><i class="mini">${B.artOf(p)}</i><span><b>${p.name}</b><small>${t('cat_' + p.cat)}</small></span></span>
+        <span class="pcell">
+          <label class="pic" title="${L('Şəkli dəyiş', 'Сменить фото')}">
+            <i class="mini">${B.artOf(p)}</i><em>${L('Dəyiş', 'Фото')}</em>
+            <input type="file" accept="image/*" data-img="${p.id}" hidden>
+          </label>
+          <span><b>${p.name}</b><small>${t('cat_' + p.cat)}${p.img ? ` · <button class="link" data-noimg="${p.id}">${L('şəkli sil', 'убрать фото')}</button>` : ''}</small></span>
+        </span>
         <span><input type="number" min="0" step="10" value="${p.price}" data-price="${p.id}" class="num"></span>
         <span><input type="number" min="0" step="1" value="${p.stock}" data-stock="${p.id}" class="num ${p.stock ? '' : 'zero'}"></span>
         <span><label class="sw"><input type="checkbox" data-hit="${p.id}" ${p.hit ? 'checked' : ''}><i></i></label></span>
@@ -110,6 +116,8 @@
       const tb = e.target.closest('[data-tab]'); if (tb) { tab = tb.dataset.tab; return B.render(); }
       const f = e.target.closest('[data-f]'); if (f) { filter = f.dataset.f; return B.render(); }
       if (e.target.closest('#reset')) { B.reset(); B.toast(L('Demo sıfırlandı', 'Демо сброшено')); }
+      const ni = e.target.closest('[data-noimg]');
+      if (ni) { e.preventDefault(); B.setProduct(ni.dataset.noimg, { img: '' }); B.panelRefresh('img'); }
     };
     v.onchange = (e) => {
       const el = e.target;
@@ -117,8 +125,35 @@
       if (el.dataset.price) { B.setProduct(el.dataset.price, { price: Math.max(0, +el.value || 0) }); B.toast(`${B.product(el.dataset.price).name}: ${B.money(+el.value)} ✓ ${L('saytda və botda', 'на сайте и в боте')}`); }
       if (el.dataset.stock) { B.setProduct(el.dataset.stock, { stock: Math.max(0, +el.value || 0) }); el.classList.toggle('zero', !+el.value); }
       if (el.dataset.hit) B.setProduct(el.dataset.hit, { hit: el.checked });
+      if (el.dataset.img && el.files[0]) setImage(el.dataset.img, el.files[0]);
     };
   };
+
+  // Фото уменьшается в браузере до 640 px и сохраняется как WebP/JPEG: так в хранилище браузера влезают десятки фото.
+  // В настоящей версии файл уходит на сервер, а здесь живёт только в этом браузере.
+  async function setImage(id, file) {
+    if (!file.type.startsWith('image/')) return B.toast(L('Bu şəkil deyil', 'Это не картинка'));
+    try {
+      const bmp = await createImageBitmap(file);
+      const k = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(bmp, 0, 0, c.width, c.height);
+      let url = c.toDataURL('image/webp', 0.82);
+      if (!url.startsWith('data:image/webp')) url = c.toDataURL('image/jpeg', 0.82);
+      const p = B.product(id), prev = p.img;
+      if (!B.setProduct(id, { img: url })) {
+        B.setProduct(id, { img: prev || '' });
+        return B.toast(L('Brauzerdə yer qalmadı — başqa şəkli silin', 'В браузере кончилось место — уберите другое фото'));
+      }
+      B.toast(`${p.name}: ${L('yeni şəkil saytda', 'новое фото на сайте')} ✓`);
+      B.panelRefresh('img');
+    } catch {
+      B.toast(L('Şəkli açmaq olmadı', 'Не удалось открыть картинку'));
+    }
+  }
 
   // Обновление без потери фокуса: пока менеджер печатает цену, таблицу не перерисовываем.
   B.panelRefresh = (what) => {
